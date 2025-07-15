@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import openai
+from openai import OpenAI
 import os
 from flask_cors import CORS
 from pathlib import Path
@@ -8,8 +8,8 @@ from ocr.ocr_handler import extract_text_from_image
 app = Flask(__name__)
 CORS(app)
 
-# Load OpenAI key from environment variable
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Search Pakistani law .txt files
 def search_laws(query):
@@ -40,12 +40,12 @@ Give a legal answer with proper section references.
 """
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
-        return jsonify({"answer": response['choices'][0]['message']['content']})
+        return jsonify({"answer": response.choices[0].message.content})
     except Exception as e:
         return jsonify({'error': str(e)})
 

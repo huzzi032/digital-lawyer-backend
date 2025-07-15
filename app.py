@@ -8,10 +8,10 @@ from ocr.ocr_handler import extract_text_from_image
 app = Flask(__name__)
 CORS(app)
 
-# Initialize OpenAI client
+# ✅ Use environment variable
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Search Pakistani law .txt files
+# ✅ Function to search .txt law files
 def search_laws(query):
     combined_text = ""
     laws_dir = Path("backend/data/laws")
@@ -20,10 +20,10 @@ def search_laws(query):
             text = f.read()
             if query.lower() in text.lower():
                 combined_text += f"\n--- {law_file.name} ---\n"
-                combined_text += text[:4000]  # Limit text for prompt length
+                combined_text += text[:4000]
     return combined_text if combined_text else "No relevant law found."
 
-# Route: POST /ask (text query)
+# ✅ Route to handle legal question
 @app.route('/ask', methods=['POST'])
 def ask():
     question = request.json.get('question')
@@ -41,7 +41,7 @@ Give a legal answer with proper section references.
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",  # ✅ Replaced gpt-4
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
@@ -49,7 +49,7 @@ Give a legal answer with proper section references.
     except Exception as e:
         return jsonify({'error': str(e)})
 
-# Route: POST /ocr (image input)
+# ✅ Route to handle OCR image uploads
 @app.route('/ocr', methods=['POST'])
 def ocr():
     if 'image' not in request.files:
@@ -58,7 +58,7 @@ def ocr():
     text = extract_text_from_image(image)
     return jsonify({'extracted_text': text})
 
-# ✅ Production-compatible run config
+# ✅ Run with Railway's expected port (usually 8080)
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)

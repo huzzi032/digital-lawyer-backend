@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
-from openai import OpenAI
 import os
+import requests
 from flask_cors import CORS
 from pathlib import Path
 from ocr.ocr_handler import extract_text_from_image
@@ -8,8 +8,8 @@ from ocr.ocr_handler import extract_text_from_image
 app = Flask(__name__)
 CORS(app)
 
-# ✅ Use environment variable
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# ✅ Get HuggingFace token from env
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 # ✅ Function to search .txt law files
 def search_laws(query):
@@ -22,6 +22,31 @@ def search_laws(query):
                 combined_text += f"\n--- {law_file.name} ---\n"
                 combined_text += text[:4000]
     return combined_text if combined_text else "No relevant law found."
+
+# ✅ Function to call Hugging Face API (Mistral)
+def call_mistral(prompt):
+    headers = {
+        "Authorization": f"Bearer {HUGGINGFACE_API_KEY}"
+    }
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 300,
+            "temperature": 0.3
+        }
+    }
+
+    response = requests.post(
+        "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
+        headers=headers,
+        json=payload
+    )
+
+    if response.status_code == 200:
+        data = response.json()
+        return data[0]['generated_text'] if isinstance(data, list) else data
+    else:
+        return f"⚠️ HuggingFace Error {response.status_code}: {response.text}"
 
 # ✅ Route to handle legal question
 @app.route('/ask', methods=['POST'])
@@ -38,16 +63,8 @@ You are a Pakistani Legal Assistant AI. Use the following laws to answer the que
 Question: {question}
 Give a legal answer with proper section references.
 """
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # ✅ Replaced gpt-4
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-        return jsonify({"answer": response.choices[0].message.content})
-    except Exception as e:
-        return jsonify({'error': str(e)})
+    answer = call_mistral(prompt)
+    return jsonify({"answer": answer})
 
 # ✅ Route to handle OCR image uploads
 @app.route('/ocr', methods=['POST'])

@@ -8,8 +8,10 @@ from ocr.ocr_handler import extract_text_from_image
 app = Flask(__name__)
 CORS(app)
 
+# Load OpenAI key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Search Pakistani law .txt files
 def search_laws(query):
     combined_text = ""
     laws_dir = Path("backend/data/laws")
@@ -18,9 +20,10 @@ def search_laws(query):
             text = f.read()
             if query.lower() in text.lower():
                 combined_text += f"\n--- {law_file.name} ---\n"
-                combined_text += text[:4000]
+                combined_text += text[:4000]  # Limit text for prompt length
     return combined_text if combined_text else "No relevant law found."
 
+# Route: POST /ask (text query)
 @app.route('/ask', methods=['POST'])
 def ask():
     question = request.json.get('question')
@@ -46,6 +49,7 @@ Give a legal answer with proper section references.
     except Exception as e:
         return jsonify({'error': str(e)})
 
+# Route: POST /ocr (image input)
 @app.route('/ocr', methods=['POST'])
 def ocr():
     if 'image' not in request.files:
@@ -54,5 +58,6 @@ def ocr():
     text = extract_text_from_image(image)
     return jsonify({'extracted_text': text})
 
+# ✅ Production-compatible run config
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=8000)

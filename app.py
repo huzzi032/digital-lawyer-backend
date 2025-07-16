@@ -8,10 +8,10 @@ from ocr.ocr_handler import extract_text_from_image
 app = Flask(__name__)
 CORS(app)
 
-# ✅ Get HuggingFace token from env
-HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+# ✅ Groq API key
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ✅ Function to search .txt law files
+# ✅ Search law files
 def search_laws(query):
     combined_text = ""
     laws_dir = Path("backend/data/laws")
@@ -23,37 +23,29 @@ def search_laws(query):
                 combined_text += text[:4000]
     return combined_text if combined_text else "No relevant law found."
 
-# ✅ Function to call Hugging Face API (Mistral)
-def call_mistral(prompt):
+# ✅ Ask via Groq + Mistral
+def call_groq(prompt):
     headers = {
-        "Authorization": f"Bearer {HUGGINGFACE_API_KEY}"
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
     }
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 300,
-            "temperature": 0.3
-        }
+    body = {
+        "messages": [{"role": "user", "content": prompt}],
+        "model": "mixtral-8x7b-32768",  # or llama3-8b-8192
+        "temperature": 0.3
     }
-
-    response = requests.post(
-        "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
-        headers=headers,
-        json=payload
-    )
+    response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body)
 
     if response.status_code == 200:
-        data = response.json()
-        return data[0]['generated_text'] if isinstance(data, list) else data
+        return response.json()["choices"][0]["message"]["content"]
     else:
-        return f"⚠️ HuggingFace Error {response.status_code}: {response.text}"
+        return f"⚠️ Groq Error {response.status_code}: {response.text}"
 
-# ✅ Route to handle legal question
+# ✅ Route to ask
 @app.route('/ask', methods=['POST'])
 def ask():
     question = request.json.get('question')
     law_context = search_laws(question)
-
     prompt = f"""
 You are a Pakistani Legal Assistant AI. Use the following laws to answer the question:
 ----
@@ -63,10 +55,10 @@ You are a Pakistani Legal Assistant AI. Use the following laws to answer the que
 Question: {question}
 Give a legal answer with proper section references.
 """
-    answer = call_mistral(prompt)
+    answer = call_groq(prompt)
     return jsonify({"answer": answer})
 
-# ✅ Route to handle OCR image uploads
+# ✅ Route to OCR
 @app.route('/ocr', methods=['POST'])
 def ocr():
     if 'image' not in request.files:
@@ -75,7 +67,7 @@ def ocr():
     text = extract_text_from_image(image)
     return jsonify({'extracted_text': text})
 
-# ✅ Run with Railway's expected port (usually 8080)
+# ✅ Run on Railway
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)

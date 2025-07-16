@@ -11,7 +11,7 @@ CORS(app)
 # ✅ Groq API key
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ✅ Search law files
+# ✅ Search Pakistani law .txt files
 def search_laws(query):
     combined_text = ""
     laws_dir = Path("backend/data/laws")
@@ -23,7 +23,7 @@ def search_laws(query):
                 combined_text += text[:4000]
     return combined_text if combined_text else "No relevant law found."
 
-# ✅ Ask via Groq + Mistral
+# ✅ Function to call Groq API using LLaMA3
 def call_groq(prompt):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -31,9 +31,10 @@ def call_groq(prompt):
     }
     body = {
         "messages": [{"role": "user", "content": prompt}],
-        "model": "mixtral-8x7b-32768",  # or llama3-8b-8192
+        "model": "llama3-8b-8192",  # ✅ Updated model
         "temperature": 0.3
     }
+
     response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body)
 
     if response.status_code == 200:
@@ -41,7 +42,7 @@ def call_groq(prompt):
     else:
         return f"⚠️ Groq Error {response.status_code}: {response.text}"
 
-# ✅ Route to ask
+# ✅ Route to ask legal questions
 @app.route('/ask', methods=['POST'])
 def ask():
     question = request.json.get('question')
@@ -58,7 +59,7 @@ Give a legal answer with proper section references.
     answer = call_groq(prompt)
     return jsonify({"answer": answer})
 
-# ✅ Route to OCR
+# ✅ OCR image processing route
 @app.route('/ocr', methods=['POST'])
 def ocr():
     if 'image' not in request.files:
@@ -67,7 +68,7 @@ def ocr():
     text = extract_text_from_image(image)
     return jsonify({'extracted_text': text})
 
-# ✅ Run on Railway
+# ✅ Run app on Railway
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)

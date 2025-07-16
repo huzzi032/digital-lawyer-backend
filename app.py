@@ -11,7 +11,7 @@ CORS(app)
 # ✅ Groq API key
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ✅ Search law text files
+# ✅ Search Pakistani law .txt files
 def search_laws(query):
     combined_text = ""
     laws_dir = Path("backend/data/laws")
@@ -23,7 +23,7 @@ def search_laws(query):
                 combined_text += text[:4000]
     return combined_text if combined_text else "No relevant law found."
 
-# ✅ Call Groq API with LLaMA3 model
+# ✅ Function to call Groq API using LLaMA3
 def call_groq(prompt):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -42,7 +42,7 @@ def call_groq(prompt):
     else:
         return f"⚠️ Groq Error {response.status_code}: {response.text}"
 
-# ✅ POST: /ask
+# ✅ Ask route
 @app.route('/ask', methods=['POST'])
 def ask():
     question = request.json.get('question')
@@ -61,7 +61,7 @@ Give a legal answer with proper section references.
     answer = call_groq(prompt)
     return jsonify({"answer": answer})
 
-# ✅ POST: /ocr
+# ✅ OCR route
 @app.route('/ocr', methods=['POST'])
 def ocr():
     if 'image' not in request.files:

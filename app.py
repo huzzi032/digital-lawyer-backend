@@ -11,7 +11,7 @@ CORS(app)
 # ✅ Groq API key
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ✅ Search Pakistani law .txt files
+# ✅ Search law text files
 def search_laws(query):
     combined_text = ""
     laws_dir = Path("backend/data/laws")
@@ -23,7 +23,7 @@ def search_laws(query):
                 combined_text += text[:4000]
     return combined_text if combined_text else "No relevant law found."
 
-# ✅ Function to call Groq API using LLaMA3
+# ✅ Call Groq API with LLaMA3 model
 def call_groq(prompt):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -31,7 +31,7 @@ def call_groq(prompt):
     }
     body = {
         "messages": [{"role": "user", "content": prompt}],
-        "model": "llama3-8b-8192",  # ✅ Updated model
+        "model": "llama3-8b-8192",
         "temperature": 0.3
     }
 
@@ -42,10 +42,12 @@ def call_groq(prompt):
     else:
         return f"⚠️ Groq Error {response.status_code}: {response.text}"
 
-# ✅ Route to ask legal questions
+# ✅ POST: /ask
 @app.route('/ask', methods=['POST'])
 def ask():
     question = request.json.get('question')
+    if not question:
+        return jsonify({"error": "Missing 'question'"}), 400
     law_context = search_laws(question)
     prompt = f"""
 You are a Pakistani Legal Assistant AI. Use the following laws to answer the question:
@@ -59,7 +61,7 @@ Give a legal answer with proper section references.
     answer = call_groq(prompt)
     return jsonify({"answer": answer})
 
-# ✅ OCR image processing route
+# ✅ POST: /ocr
 @app.route('/ocr', methods=['POST'])
 def ocr():
     if 'image' not in request.files:
@@ -68,7 +70,7 @@ def ocr():
     text = extract_text_from_image(image)
     return jsonify({'extracted_text': text})
 
-# ✅ Run app on Railway
+# ✅ Start server
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
